@@ -124,3 +124,52 @@ The signed-in account must have sufficient permissions to modify the target grou
 ## Disclaimer
 
 This script modifies Microsoft Entra ID group membership, which can affect Intune application deployments, configuration policies and other group-based assignments. Test with a small device list before running it at scale.
+
+
+
+# CHECK_DEVICES_GROUP
+
+A simple PowerShell script that uses Microsoft Graph API to check how many devices are in an Entra ID group.
+
+## Features
+
+- Search for a group by name.
+- Display matching groups if multiple results are found.
+- Count direct device members.
+- Display device hostnames in the command prompt.
+- Export device details to a CSV file that opens in Microsoft Excel.
+
+## Requirements
+
+- PowerShell
+- Microsoft Graph PowerShell modules:
+  - `Microsoft.Graph.Authentication`
+  - `Microsoft.Graph.Groups`
+- Appropriate Microsoft Graph permissions and consent.
+
+## Usage
+
+1. Run the PowerShell script.
+2. Sign in to Microsoft Graph using the device-code prompt.
+3. Enter the group name.
+4. Review the device count and hostnames.
+5. Enter `Y` to export the results or `N` to skip.
+
+## Export Location
+
+The CSV file is saved to the current user's Documents folder:
+
+`%USERPROFILE%\Documents\GroupDevices.csv`
+
+## Permissions
+
+The script uses Microsoft Graph permissions to read group membership and device details.
+
+## Notes
+
+- Only direct device members are counted.
+- Nested groups are not included.
+- The exported CSV can be opened in Microsoft Excel.
+
+---
+
