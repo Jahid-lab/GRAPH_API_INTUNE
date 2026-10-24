@@ -9,7 +9,7 @@ Install-Module Microsoft.Graph.Identity.DirectoryManagement -Scope AllUsers
 Connect-MgGraph -Scopes "GroupMember.ReadWrite.All","Device.Read.All" -UseDeviceCode
 
 
-## moves devices into GROUPNAME WITH THE SERIAL TAGS UELIMD-ASSOCIATED
+## moves devices into GROUPNAME WITH THE SERIAL TAGS (HOSTNAMES)
 
 $groupName = "xxx (GROUPNAME)"
 $deviceListPath = "C:\(PATH-WAY TO devices.txt"   # one device name per line
