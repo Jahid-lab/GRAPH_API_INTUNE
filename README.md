@@ -15,7 +15,7 @@ TOOLKIT-EUC simplifies common Microsoft Intune and Microsoft Entra ID reporting 
 | 3 | Check Application Installation Status | Retrieve app installation status and identify devices reporting an installed application. |
 | 4 | Autopilot Device Lookup | Look up Windows Autopilot device information. |
 | 5 | Compare Device Group Memberships | Review device group memberships to assist with troubleshooting. |
-| 6 | View Device Inventory | Retrieve and filter managed device inventory, including Windows 11 workstations matching the `UELIMD-*` naming convention. |
+| 6 | View Device Inventory | Retrieve and filter managed device inventory, including Windows 11 workstations matching the `xxx*` naming convention. |
 
 ## Requirements
 
