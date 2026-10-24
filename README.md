@@ -68,7 +68,7 @@ TOOLKIT-EUC is an administrative toolkit intended to support EUC and Endpoint En
 
 
 
-# GROUPING-INTUNE
+# GROUPING_INTUNE
 
 A PowerShell script for bulk-adding devices to Microsoft Entra ID groups using Microsoft Graph PowerShell, supporting Intune device management workflows.
 
