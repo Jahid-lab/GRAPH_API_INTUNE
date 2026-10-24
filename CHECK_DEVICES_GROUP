@@ -1,0 +1,99 @@
+
+# Connect to Microsoft Graph
+try {
+    Connect-MgGraph -Scopes "Group.Read.All", "Device.Read.All" `
+        -UseDeviceCode -ErrorAction Stop
+
+    Write-Host "`nConnected to Microsoft Graph." -ForegroundColor Green
+}
+catch {
+    Write-Host "Connection failed: $($_.Exception.Message)" -ForegroundColor Red
+    return
+}
+
+# Search for the group
+$GroupName = Read-Host "`nEnter group name"
+
+$Groups = @(
+    Get-MgGroup -All -Property "Id,DisplayName" |
+        Where-Object { $_.DisplayName -like "*$GroupName*" }
+)
+
+if ($Groups.Count -eq 0) {
+    Write-Host "No matching group found." -ForegroundColor Red
+    return
+}
+
+# Select group if multiple matches exist
+if ($Groups.Count -gt 1) {
+    Write-Host "`nMatching groups:" -ForegroundColor Cyan
+
+    for ($i = 0; $i -lt $Groups.Count; $i++) {
+        Write-Host "$($i + 1). $($Groups[$i].DisplayName)"
+    }
+
+    $Selection = Read-Host "Enter group number"
+
+    if ($Selection -notmatch '^\d+$' -or
+        [int]$Selection -lt 1 -or
+        [int]$Selection -gt $Groups.Count) {
+        Write-Host "Invalid selection." -ForegroundColor Red
+        return
+    }
+
+    $Group = $Groups[[int]$Selection - 1]
+}
+else {
+    $Group = $Groups[0]
+}
+
+Write-Host "`nGroup: $($Group.DisplayName)" -ForegroundColor Cyan
+Write-Host "Retrieving device members..." -ForegroundColor Yellow
+
+# Get direct device members
+$Members = Get-MgGroupMember -GroupId $Group.Id -All
+
+$Devices = @(
+    foreach ($Member in $Members) {
+        if ($Member.AdditionalProperties.'@odata.type' -eq '#microsoft.graph.device') {
+            [PSCustomObject]@{
+                Hostname = $Member.AdditionalProperties.displayName
+                DeviceId = $Member.Id
+            }
+        }
+    }
+)
+
+# Display device count and hostnames
+Write-Host "`nTotal devices: $($Devices.Count)" -ForegroundColor Green
+Write-Host "`nDevice hostnames:" -ForegroundColor Cyan
+
+if ($Devices.Count -gt 0) {
+    $Devices | Format-Table Hostname, DeviceId -AutoSize
+}
+else {
+    Write-Host "No direct device members found." -ForegroundColor Yellow
+}
+
+# Ask whether to export
+if ($Devices.Count -gt 0) {
+    $Export = Read-Host "`nExport devices to an Excel-compatible CSV file? (Y/N)"
+
+    if ($Export -match '^(Y|YES)$') {
+        $Documents = Join-Path $env:USERPROFILE "Documents"
+        $Path = Join-Path $Documents "GroupDevices.csv"
+
+        if (-not (Test-Path $Documents)) {
+            New-Item -Path $Documents -ItemType Directory -Force | Out-Null
+        }
+
+        $Devices | Export-Csv -Path $Path -NoTypeInformation -Encoding UTF8
+
+        Write-Host "`nExport saved to: $Path" -ForegroundColor Green
+    }
+    else {
+        Write-Host "Export cancelled." -ForegroundColor Yellow
+    }
+}
+
+Disconnect-MgGraph -ErrorAction SilentlyContinue
