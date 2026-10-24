@@ -117,7 +117,9 @@ function Get-AssignmentTargetName {
     }
 }
 
-# OPTION 1: Search apps by partial name and show included/excluded assignments.
+
+
+# OPTION 1: Search apps by name, version, platform and assignments.
 function Find-AppsByName {
     $Search = Read-Host "Enter part of the application name (e.g. Adobe)"
 
@@ -128,6 +130,7 @@ function Find-AppsByName {
     Write-Host "`nSearching Intune applications for '$Search'..." `
         -ForegroundColor Cyan
 
+    # Retrieve the app list using the original working endpoint.
     $AllApps = Get-GraphAll (
         "https://graph.microsoft.com/v1.0/deviceAppManagement/mobileApps?`$select=id,displayName"
     )
@@ -154,6 +157,48 @@ function Find-AppsByName {
         Write-Host "Checking: $($App.displayName)"
 
         try {
+            # Retrieve details individually because app properties vary by type.
+            $AppDetails = Invoke-MgGraphRequest `
+                -Method GET `
+                -Uri "https://graph.microsoft.com/beta/deviceAppManagement/mobileApps/$($App.id)"
+
+            $AppType = $AppDetails.'@odata.type'
+
+            # Identify the app platform from its Intune app type.
+            $Platform = switch -Regex ($AppType) {
+                'win32LobApp|winGetApp|windowsMobileMSI|windowsUniversalAppX|windowsStoreApp|windowsWebApp|windowsMicrosoftEdgeApp' {
+                    "Windows"
+                    break
+                }
+                'iosLobApp|iosStoreApp|iosVppApp|managedIOSLobApp' {
+                    "iOS"
+                    break
+                }
+                'androidLobApp|androidStoreApp|managedAndroidLobApp|androidManagedStoreApp' {
+                    "Android"
+                    break
+                }
+                'macOS|macOSLobApp|macOSDmgApp|macOSPkgApp' {
+                    "macOS"
+                    break
+                }
+                default {
+                    "Other/Unknown"
+                }
+            }
+
+            # Version fields differ between Intune app types.
+            $Version = $AppDetails.displayVersion
+
+            if ([string]::IsNullOrWhiteSpace([string]$Version)) {
+                $Version = $AppDetails.displayVersionNumber
+            }
+
+            if ([string]::IsNullOrWhiteSpace([string]$Version)) {
+                $Version = "Not exposed"
+            }
+
+            # Retrieve assignments.
             $Assignments = @(
                 Get-GraphAll (
                     "https://graph.microsoft.com/v1.0/deviceAppManagement/mobileApps/$($App.id)/assignments"
@@ -163,6 +208,9 @@ function Find-AppsByName {
             if ($Assignments.Count -eq 0) {
                 $Results += [PSCustomObject]@{
                     AppName        = $App.displayName
+                    Platform       = $Platform
+                    AppVersion     = $Version
+                    AppType        = $AppType
                     AppId          = $App.id
                     Intent         = "No assignments"
                     AssignmentType = ""
@@ -197,6 +245,9 @@ function Find-AppsByName {
 
                 $Results += [PSCustomObject]@{
                     AppName        = $App.displayName
+                    Platform       = $Platform
+                    AppVersion     = $Version
+                    AppType        = $AppType
                     AppId          = $App.id
                     Intent         = $A.intent
                     AssignmentType = $AssignmentType
@@ -210,7 +261,7 @@ function Find-AppsByName {
             }
         }
         catch {
-            Write-Warning "Could not retrieve assignments for '$($App.displayName)': $($_.Exception.Message)"
+            Write-Warning "Could not retrieve '$($App.displayName)': $($_.Exception.Message)"
         }
     }
 
@@ -218,8 +269,15 @@ function Find-AppsByName {
         $Results | Sort-Object AppName, Intent, AssignmentType, GroupName
     )
 
+    if ($Results.Count -eq 0) {
+        Write-Host "No application assignment results were retrieved." `
+            -ForegroundColor Yellow
+        return
+    }
+
     Export-Results -Data $Results -Name "ApplicationAssignments"
 }
+
 
 # OPTION 2: Find apps included or excluded for a specific Entra group.
 function Find-GroupApps {
@@ -656,7 +714,7 @@ function Export-DeviceInventory {
 $Workstations = @(
     $Devices | Where-Object {
         $_.operatingSystem -eq "Windows" -and
-        $_.deviceName -like "xxx*" -and
+        $_.deviceName -like "xxxx*" -and
         $_.osVersion -match '^10\.0\.(\d+)' -and
         [int]$Matches[1] -ge 22000
     }
